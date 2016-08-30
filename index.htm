@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Halachic Times</title>
+		<link rel="stylesheet" href="./css/bootstrap.min.css">
+		<!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+			<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+		<![endif]-->
+		<style>
+.panel {
+	-webkit-box-shadow: -1px -1px 10px 0px rgba(50, 50, 50, 0.25);
+	-moz-box-shadow:    -1px -1px 10px 0px rgba(50, 50, 50, 0.25);
+	box-shadow:         -1px -1px 10px 0px rgba(50, 50, 50, 0.25);
+}
+		</style>
+	</head>
+	<body>
+	
+		<div class="container" style="max-width: 300px; margin-top: 30px;" ng-app="app" ng-controller="Halachic">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<span class="glyphicon glyphicon-time" aria-hidden="true"></span> Halachic Times
+				</div>
+				<div class="panel-body">
+					<form ng-submit="send_form()">
+						<div class="form-group">
+							<input type="hidden" id="latitude">
+							<input type="hidden" id="longitude">
+							<label>Location:</label>
+							<input type="text" id="location" class="form-control" onfocus="geolocate()">
+						</div>
+						<div class="form-group">
+							<label>Date:</label>
+							<input type="date" id="date" class="form-control">
+						</div>
+						<button type="submit" class="btn btn-default">Send</button>
+					</form>
+				</div>
+				<table class="table">
+					<tbody>
+						<tr ng-repeat="(k, v) in Times">
+							<th>{{ k }}</th>
+							<td>{{ v | moment: 'H:mm' }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		
+		<script src="./js/jquery.min.js"></script>
+		<script src="./js/bootstrap.min.js"></script>
+		<script src="./js/angular.min.js"></script>
+		<script src="./js/moment.min.js"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB2w02akGnt-H6Kp_vbMDi4K351toYOdms&libraries=places&callback=initAutocomplete" async defer></script>
+		<script>
+var app = angular.module('app', []);
+
+app.filter('moment', function() {
+    return function(date, format) {
+        return moment.unix(date).format(format);
+    };
+});
+
+app.controller('Halachic', function($scope, $http) {
+
+	$scope.range = function(min, max) {
+	
+		for (var i = min, input = []; i <= max; i++) {
+			input.push(i);
+		}
+		
+		return input;
+	};
+	
+	$scope.send_form = function() {
+	
+		$http.get("times.php", {
+			params: {
+				date: $('#date').val(),
+				latitude: $('#latitude').val(),
+				longitude: $('#longitude').val()
+			}
+		}).then(function(response) {
+			if (!response.data.error)
+			{
+				$scope.Times = response.data;
+			}
+		});
+		
+	};
+
+});
+
+// http://stackoverflow.com/a/13052187
+
+Date.prototype.toDateInputValue = (function() {
+    var local = new Date(this);
+    local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
+    return local.toJSON().slice(0,10);
+});
+
+$('#date').val(new Date().toDateInputValue());
+
+var placeSearch, autocomplete;
+
+function initAutocomplete() {
+
+	autocomplete = new google.maps.places.Autocomplete(
+		(document.getElementById('location')),
+		{types: ['geocode']}
+	);
+	
+	autocomplete.addListener('place_changed', function() {
+	
+		var place = autocomplete.getPlace();
+		
+		$('#latitude').val( place.geometry.location.lat() );
+		$('#longitude').val( place.geometry.location.lng() );
+		
+	});
+}
+
+// https://developers.google.com/maps/documentation/javascript/examples/places-autocomplete-addressform
+
+function geolocate() {
+	if (navigator.geolocation) {
+		navigator.geolocation.getCurrentPosition(function(position) {
+			var geolocation = {
+				lat: position.coords.latitude,
+				lng: position.coords.longitude
+			};
+			var circle = new google.maps.Circle({
+				center: geolocation,
+				radius: position.coords.accuracy
+			});
+			autocomplete.setBounds(circle.getBounds());
+		});
+	}
+}
+		</script>
+	</body>
+</html>
